@@ -1,0 +1,37 @@
+- hosts: localhost
+
+  vars:
+    alert_email: admin@example.com
+
+  tasks:
+    - name: Verify install
+      yum:
+        name: httpd
+        state: present
+      when: task_action == "verify_install"
+
+    - name: Check disk
+      command: df -h /
+      register: disk
+      when: task_action == "check-disk"
+
+    - name: Disk alert
+      mail:
+        to: "{{ alert_email }}"
+        subject: Disk Alert
+        body: "{{ disk.stdout }}"
+      when:
+        - task_action == "check-disk"
+        - disk.stdout is search("8[0-9]%|9[0-9]%|100%")
+
+    - name: Check status
+      uri:
+        url: http://localhost:8000/healthcheck
+        method: GET
+        return_content: yes
+      register: status
+      when: task_action == "check-status"
+
+    - debug:
+        var: status.json
+      when: task_action == "check-status"
